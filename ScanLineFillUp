@@ -26,7 +26,7 @@ GLfloat ywcMin = 0.0, ywcMax = 500.0;
 3.1. 对每一条扫描线上的点，按照x大小进行排序，建立线段数组，进行画线。
 */
 struct Point{/*定义“点”*/
-	int x, y;
+	GLint x, y;
 };
 struct Line{/*定义“直线”*/
 	Point start, end;
@@ -34,15 +34,15 @@ struct Line{/*定义“直线”*/
 class  Poly{
 public:
 	Line* pline;
-	int lnum;/*表明这个多边形有n条边*/
-	 Poly(Point *pp,int pnum) {/*用给定的点，生成相应的凸包，假定点已经是“良序”的*//*------“良序”需要定义-------*/
+	GLint lnum;/*表明这个多边形有n条边*/
+	 Poly(Point *pp,GLint pnum) {/*用给定的点，生成相应的凸包，假定点已经是“良序”的*//*------“良序”需要定义-------*/
 		 pline = new Line[pnum];//生成的边的数量等于点的数量;
 		 lnum = pnum;
-		 for (int i = 0; i < pnum; ++i) {
+		 for (GLint i = 0; i < pnum; ++i) {
 			 /*规定pline中的线段的起点y坐标一定不小于终点的y坐标*/
 			 /*如果该线段的终点不是极值点的话，就把终点的y坐标-1*/
 			 /*水平线需要额外考虑*/ /*--------先假设不存在水平线--------*/
-			 int minus = 0;
+			 GLint minus = 0;
 			 if ((pp[(i + 1) % pnum].y - pp[i].y)*(pp[(i + 1) % pnum].y - pp[(i + 2) % pnum].y) < 0)minus = 1;
 			 if (pp[i].y < pp[(i + 1)%pnum].y) {
 				 pline[i].start.x = pp[i].x;
@@ -62,10 +62,10 @@ public:
 	 /*把pline中的线段按照起点的y由小到大排序*/
 	 void order() {
 		/*采用顺序排序， 因为线段数量不是很多*/
-		 for (int i = 0; i < lnum; ++i) {
-			 int min = pline[i].start.y;
-			 int index = i;
-			 for (int j = i+1; j < lnum; ++j) {
+		 for (GLint i = 0; i < lnum; ++i) {
+			 GLint min = pline[i].start.y;
+			 GLint index = i;
+			 for (GLint j = i+1; j < lnum; ++j) {
 				 if (pline[j].start.y < min) {
 					 min = pline[j].start.y;
 					 index = j;
@@ -84,7 +84,7 @@ public:
 };
 class Edge {
 public:
-	int x, ymax, DelatX, DeltaY;
+	GLint x, ymax, DelatX, DeltaY;
 	Edge* nextedge;
 
 	/*在已有的边之后再加上一条边*/
@@ -102,7 +102,7 @@ class  EdgeV
 {
 public:
 	Edge* head;
-	int num;
+	GLint num;
 	void add(Edge* temp) {
 		head->add(temp);
 		num++;
@@ -111,12 +111,12 @@ public:
 class  PinSL//point in the search line
 {
 public:
-	int x;
-	int count;//计数器，用来决定是否增加x
-	int lefttimes;//该点的生存剩余扫描线条数。由这点所在的原线段的ymax值和当前的y值决定。如果lefttimes = 0，则下一条扫描线就抛弃这个点
-	int deltaX, deltaY;
+	GLint x;
+	GLint count;//计数器，用来决定是否增加x
+	GLint lefttimes;//该点的生存剩余扫描线条数。由这点所在的原线段的ymax值和当前的y值决定。如果lefttimes = 0，则下一条扫描线就抛弃这个点
+	GLint deltaX, deltaY;
 
-	void add_x(int add_y) {
+	void add_x(GLint add_y) {
 		count += add_y*deltaX;
 		while (count >= deltaY) {
 			x++;
@@ -124,7 +124,7 @@ public:
 		}
 	}
 	
-	void setPinSL(int xx,int cc, int lltimes, int dx, int dy) {
+	void setPinSL(GLint xx,GLint cc,GLint lltimes, GLint dx, GLint dy) {
 		x = xx;
 		count = cc;
 		lefttimes = lltimes;
@@ -136,23 +136,35 @@ class  PinSLV//point in the search line vector
 {
 public:
 	PinSL* p;
-	int num;//初始值为0
-	int y;//记录当前扫描线的y坐标，相对的还是绝对的，还需再讨论,必须要和edge中的y坐标统一起来
+	GLint num;//初始值为0
+	GLint y;//记录当前扫描线的y坐标，相对的还是绝对的，还需再讨论,必须要和edge中的y坐标统一起来
 	PinSLV() {}
-	PinSLV(PinSLV *beforeP, EdgeV *nowEdge,int yy)//给出前一条扫描线上的各个点，和当前扫描线的边表，计算当前扫描线上的表
-	{
+	PinSLV(EdgeV* nowEdge, GLint yy) {
 		y = yy;
-		int n = beforeP->num+nowEdge->num;
+		GLint n = nowEdge->num;
 		p = new PinSL[n];//这种定义存在很大的浪费
 		Edge *tedge = nowEdge->head;
-		int i = 0;
+		GLint i = 0;
+		/*把当前扫描线边表中的边的交点加入到这条扫描线的交点上*/
+		while (tedge != nullptr) {
+			p[i++].setPinSL(tedge->x, 0, tedge->ymax - y, tedge->DelatX, tedge->DeltaY);
+			num++;
+		}
+	}
+	PinSLV(PinSLV *beforeP, EdgeV *nowEdge,GLint yy)//给出前一条扫描线上的各个点，和当前扫描线的边表，计算当前扫描线上的表
+	{
+		y = yy;
+		GLint n = beforeP->num+nowEdge->num;
+		p = new PinSL[n];//这种定义存在很大的浪费
+		Edge *tedge = nowEdge->head;
+		GLint i = 0;
 		/*把当前扫描线边表中的边的交点加入到这条扫描线的交点上*/
 		while (tedge != nullptr) {
 			p[i++].setPinSL(tedge->x, 0, tedge->ymax - y, tedge->DelatX, tedge->DeltaY);
 			num++;
 		}
 		/*把前一条扫描线上的各个点加入到这条扫描线上*/
-		for (int j = 0; j < beforeP->num; ++j) {
+		for (GLint j = 0; j < beforeP->num; ++j) {
 			if (beforeP->p[j].lefttimes > 0) {
 				PinSL ptemp = beforeP->p[j];
 				p[i++].setPinSL(ptemp.x, ptemp.count, ptemp.lefttimes - 1, ptemp.deltaX, ptemp.deltaY);
@@ -173,16 +185,16 @@ void plotline(GLint startx, GLint starty, GLint endx, GLint endy) {
 	glEnd();
 }
 void PlotScanLine(PinSLV pv) {
-	int num = pv.num;
-	int* x = new int[num];//把扫描线上的交点的横坐标取出来，并按由小到大排好
-	for (int i = 0; i < num; ++i) {
+	GLint num = pv.num;
+	GLint* x = new int[num];//把扫描线上的交点的横坐标取出来，并按由小到大排好
+	for (GLint i = 0; i < num; ++i) {
 		x[i] = pv.p[i].x;
 	}
 	/*排序*/
-	for (int i = 0; i < num; ++i) {
-		int mini = x[i];
-		int index = i;
-		for (int j = 1; j < num; ++j) {
+	for (GLint i = 0; i < num; ++i) {
+		GLint mini = x[i];
+		GLint index = i;
+		for (GLint j = 1; j < num; ++j) {
 			if (x[j] < mini) {
 				mini = x[j];
 				index = j;
@@ -194,7 +206,7 @@ void PlotScanLine(PinSLV pv) {
 		}
 	}
 	/*取一对对x，进行画线*/
-	for (int i = 0; i < num - 1; ++i) {
+	for (GLint i = 0; i < num - 1; i+=2) {
 		plotline(x[i], pv.y, x[i + 1], pv.y);//画线函数还需要再写
 	}
 }
@@ -209,7 +221,6 @@ void displayFcn(void) {
 	*/
 
 	GLint xstart = 20, ystart = 50, xend = 300, yend = 500;
-
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	glPointSize(6);
@@ -229,6 +240,8 @@ void winReshapeFcn(GLint newWidth, GLint newHeight) {
 }
 
 void main(int argc, char **argv) {
+	EdgeV ev;
+	PinSLV p();
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize(winWidth, winHeight);
