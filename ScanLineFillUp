@@ -139,7 +139,12 @@ public:
 	GLint num;//初始值为0
 	GLint y;//记录当前扫描线的y坐标，相对的还是绝对的，还需再讨论,必须要和edge中的y坐标统一起来
 	PinSLV() {}
-	PinSLV(EdgeV* nowEdge, GLint yy) {
+	PinSLV(const PinSLV& newp) {
+		p = newp.p;
+		num = newp.num;
+		y = newp.y;
+	}
+	void setPinSLV(EdgeV* nowEdge, GLint yy) {
 		y = yy;
 		GLint n = nowEdge->num;
 		p = new PinSL[n];//这种定义存在很大的浪费
@@ -151,7 +156,15 @@ public:
 			num++;
 		}
 	}
-	PinSLV(PinSLV *beforeP, EdgeV *nowEdge,GLint yy)//给出前一条扫描线上的各个点，和当前扫描线的边表，计算当前扫描线上的表
+	void setPinSLV(PinSL *pp, GLint pnum,GLint yy) {
+		y = yy;
+		num = pnum;
+		p = new PinSL[num];
+		for (GLint i = 0; i < pnum; ++i) {
+			p[i].setPinSL(pp[i].x, 0, 0, pp[i].deltaX, pp[i].deltaY);
+		}
+	}
+	void setPinSLV(PinSLV *beforeP, EdgeV *nowEdge,GLint yy)//给出前一条扫描线上的各个点，和当前扫描线的边表，计算当前扫描线上的表
 	{
 		y = yy;
 		GLint n = beforeP->num+nowEdge->num;
@@ -205,9 +218,9 @@ void PlotScanLine(PinSLV pv) {
 			x[i] = mini;
 		}
 	}
-	/*取一对对x，进行画线*/
+	/*取一对x，进行画线*/
 	for (GLint i = 0; i < num - 1; i+=2) {
-		plotline(x[i], pv.y, x[i + 1], pv.y);//画线函数还需要再写
+		plotline(x[i], pv.y, x[i+1], pv.y);//画线函数还需要再写
 	}
 }
 void init(void) {
@@ -216,16 +229,22 @@ void init(void) {
 }
 
 void displayFcn(void) {
-	/*set example number of control points and number of curve
-	*positions to be poltted along the Bezier curve.
-	*/
+	/*进行画图试验*/
+	PinSL pp[2];
+	pp[0].setPinSL(10, 0, 0, 0, 0);
+	pp[1].setPinSL(100, 0, 0, 0, 0);
 
-	GLint xstart = 20, ystart = 50, xend = 300, yend = 500;
+
+	PinSLV* p = new PinSLV[200];
+	 
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	glPointSize(6);
 	glColor3f(0.0, 1.0, 1.0);
-	plotline(xstart, ystart, xend, yend);
+	for (GLint y = 10; y < 100; ++y) {
+		p[y].setPinSLV(pp, 2, y);
+		PlotScanLine(p[y]);
+	}
 	glFlush();
 }
 void winReshapeFcn(GLint newWidth, GLint newHeight) {
@@ -240,8 +259,6 @@ void winReshapeFcn(GLint newWidth, GLint newHeight) {
 }
 
 void main(int argc, char **argv) {
-	EdgeV ev;
-	PinSLV p();
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize(winWidth, winHeight);
