@@ -6,25 +6,7 @@ GLsizei winWidth = 600, winHeight = 600;
 
 GLfloat xwcMin = 0.0, xwcMax = 500.0;
 GLfloat ywcMin = 0.0, ywcMax = 500.0;
-/*
-想法
-1.给定几个点：生成一个多边形
-2.给定一个多边形，边框的最小范围，按照扫描线，建立一个边表
-3.给出边表，计算出每一条扫描线上相交的点
-3.1. 给定一条扫描线上的点，对两两之间的线段进行填充
-*/
-/*
-1.申明“点”Point数据结构，根据点生成非水平的线段。
-作为多边形：一组线段列表，线段按照ymin排序，声明数据结构：线段Line，多边形Poly
-2.建立一个边表数组（大小为所有的扫描线条数：窗口界面的ymax-ymin+1）
-声明：边表结构Edge，包括ymin对应的x值，ymax,delta x,delta y
-建立一个相交点数组（大小同上），相交点结构：pinl指针+点的个数
-每一元：存放与该扫描线相交的“点”：声明结构：pinl（point in line）:xvalue,countvalue,lefttimes,delta x,delta y
-这里的点的结构：x值，计数器值，剩余次数；
-对多边形中的每一条线段，根据ymin，把它添加到相应的扫描线上
-3.计算每一条扫描线上的点：前一条扫描线上的点，检查剩余绘制次数，若没失效，计算x值。再计算当前新加入的线。
-3.1. 对每一条扫描线上的点，按照x大小进行排序，建立线段数组，进行画线。
-*/
+
 struct Point{/*定义“点”*/
 	GLint x, y;
 };
@@ -139,11 +121,7 @@ public:
 	GLint num;//初始值为0
 	GLint y;//记录当前扫描线的y坐标，相对的还是绝对的，还需再讨论,必须要和edge中的y坐标统一起来
 	PinSLV() {}
-	PinSLV(const PinSLV& newp) {
-		p = newp.p;
-		num = newp.num;
-		y = newp.y;
-	}
+	
 	void setPinSLV(EdgeV* nowEdge, GLint yy) {
 		y = yy;
 		GLint n = nowEdge->num;
@@ -189,40 +167,37 @@ public:
 	{
 		delete p;
 	}
-};//在主函数里声明PinSLV PV[lnum];
-
-void plotline(GLint startx, GLint starty, GLint endx, GLint endy) {
-	glBegin(GL_LINES);
-	glVertex2i(startx, starty);
-	glVertex2i(endx, endy);
-	glEnd();
-}
-void PlotScanLine(PinSLV pv) {
-	GLint num = pv.num;
-	GLint* x = new int[num];//把扫描线上的交点的横坐标取出来，并按由小到大排好
-	for (GLint i = 0; i < num; ++i) {
-		x[i] = pv.p[i].x;
-	}
-	/*排序*/
-	for (GLint i = 0; i < num; ++i) {
-		GLint mini = x[i];
-		GLint index = i;
-		for (GLint j = 1; j < num; ++j) {
-			if (x[j] < mini) {
-				mini = x[j];
-				index = j;
+	void  PlotScanLine(void) {
+		GLint* x = new int[num];//把扫描线上的交点的横坐标取出来，并按由小到大排好
+		for (GLint i = 0; i < num; ++i) {
+			x[i] = p[i].x;
+		}
+		/*排序*/
+		for (GLint i = 0; i < num; ++i) {
+			GLint mini = x[i];
+			GLint index = i;
+			for (GLint j = 1; j < num; ++j) {
+				if (x[j] < mini) {
+					mini = x[j];
+					index = j;
+				}
+			}
+			if (index > i) {
+				x[index] = x[i];
+				x[i] = mini;
 			}
 		}
-		if (index != i) {
-			x[index] = x[i];
-			x[i] = mini;
+		/*取一对x，进行画线*/
+		for (GLint i = 0; i < num ; i += 2) {
+			glBegin(GL_LINES);
+			glVertex2i(x[i], y);
+			glVertex2i(x[i+1], y);
+			glEnd();
 		}
 	}
-	/*取一对x，进行画线*/
-	for (GLint i = 0; i < num - 1; i+=2) {
-		plotline(x[i], pv.y, x[i+1], pv.y);//画线函数还需要再写
-	}
-}
+};//在主函数里声明PinSLV PV[lnum];
+
+
 void init(void) {
 	/*Set color of display window to white */
 	glClearColor(1.0, 1.0, 1.0, 0.0);
@@ -230,20 +205,22 @@ void init(void) {
 
 void displayFcn(void) {
 	/*进行画图试验*/
-	PinSL pp[2];
-	pp[0].setPinSL(10, 0, 0, 0, 0);
-	pp[1].setPinSL(100, 0, 0, 0, 0);
+	PinSL pp[4];
+	pp[0].setPinSL(100, 0, 0, 0, 0);
+	pp[1].setPinSL(190, 0, 0, 0, 0);
+	pp[2].setPinSL(320, 0, 0, 0, 0);
+	pp[3].setPinSL(450, 0, 0, 0, 0);
 
 
-	PinSLV* p = new PinSLV[200];
+	PinSLV* p = new PinSLV[600];
 	 
 
 	glClear(GL_COLOR_BUFFER_BIT);
-	glPointSize(6);
+	glPointSize(7);
 	glColor3f(0.0, 1.0, 1.0);
-	for (GLint y = 10; y < 100; ++y) {
-		p[y].setPinSLV(pp, 2, y);
-		PlotScanLine(p[y]);
+	for (GLint y = 10; y < 400; ++y) {
+		p[y].setPinSLV(pp, 4, y);
+		p[y].PlotScanLine();
 	}
 	glFlush();
 }
